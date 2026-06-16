@@ -132,6 +132,35 @@ html[data-theme="dark"] .theme-toggle{
   .theme-toggle{top:10px;right:10px;padding:9px 11px;font-size:13px}
 }
 
+
+/* ===== Карточки: освоение + компактные кнопки ===== */
+.card-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:12px;
+}
+.card-actions .btn{
+  min-width:0;
+  padding:11px 10px;
+  border-radius:14px;
+  white-space:nowrap;
+}
+.study-stats{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:10px;
+  font-size:13px;
+  font-weight:900;
+  color:var(--muted);
+}
+html[data-theme="dark"] .study-stats{color:var(--muted)}
+@media(max-width:420px){
+  .card-actions{gap:7px;}
+  .card-actions .btn{font-size:14px;padding:10px 8px;}
+}
+
 </style>
 </head>
 <body>
@@ -171,7 +200,7 @@ function applyTheme(theme){
   document.documentElement.setAttribute("data-theme", theme);
   localStorage.setItem(THEME_KEY, theme);
   if(themeToggle){
-    themeToggle.textContent = theme === "dark" ? "☀️ Светлая" : "🌙 Темная";
+    themeToggle.textContent = theme === "dark" ? "☀️" : "🌙";
     themeToggle.setAttribute("aria-label", theme === "dark" ? "Включить светлую тему" : "Включить темную тему");
   }
 }
@@ -294,6 +323,7 @@ let order = [];
 let index = 0;
 let score = 0;
 let answered = false;
+let masteredCards = [];
 const home = document.getElementById("home");
 const app = document.getElementById("app");
 const work = document.getElementById("work");
@@ -311,10 +341,51 @@ function renderExam(){if(index>=order.length)return renderResult();answered=fals
 function chooseAnswer(btn,ok){if(answered)return;answered=true;const q=order[index];document.querySelectorAll(".opt").forEach(b=>{b.disabled=true;if(b.textContent.replace(/^[A-D]\.\s*/,"").trim()===q.a)b.classList.add("correct");});if(ok){score++;btn.classList.add("correct");}else btn.classList.add("wrong");document.getElementById("after").innerHTML=`<div class="answer"><b>Правильный ответ:</b><br>${escapeHtml(q.a)}</div><div class="btns"><button class="btn" onclick="nextQuestion()">Следующий вопрос</button></div>`;}
 function nextQuestion(){index++;renderExam();}
 function renderResult(){setActiveMode("exam");const pct=Math.round(score/order.length*100);work.innerHTML=`<div class="card"><div class="mode">Результат</div><div class="result">${score} / ${order.length}</div><p class="muted">Правильных ответов: ${pct}%</p><div class="btns"><button class="btn" onclick="startExam()">Пройти ещё раз</button><button class="btn secondary" onclick="startCards()">Учить карточками</button><button class="btn secondary" onclick="showAll()">Посмотреть все вопросы</button></div></div>`;}
-function startCards(){setActiveMode("cards");order=current.questions.slice();index=0;renderCard();}
-function renderCard(){const q=order[index];const pct=Math.round(((index+1)/order.length)*100);work.innerHTML=`<div class="progress-wrap"><div class="progress-row"><span>Карточка ${index+1} / ${order.length}</span><span>${pct}%</span></div><div class="progress"><div class="bar" style="width:${pct}%"></div></div></div><div class="flip" id="flip" onclick="this.classList.toggle('flipped')"><div class="flip-inner"><div class="face"><div class="mode">Вопрос</div><div class="qtext">${escapeHtml(q.q)}</div><p class="muted">Нажми на карточку, чтобы увидеть ответ.</p></div><div class="face back"><div class="mode">Ответ</div><div class="ans">${escapeHtml(q.a)}</div><p class="muted">Нажми ещё раз, чтобы вернуться к вопросу.</p></div></div></div><div class="btns"><button class="btn secondary" onclick="prevCard(event)">← Назад</button><button class="btn" onclick="nextCard(event)">Дальше →</button></div>`;}
-function nextCard(e){e.stopPropagation();index=(index+1)%order.length;renderCard();}
-function prevCard(e){e.stopPropagation();index=(index-1+order.length)%order.length;renderCard();}
+function startCards(){
+  setActiveMode("cards");
+  order = shuffle(current.questions);
+  masteredCards = [];
+  index = 0;
+  renderCard();
+}
+function renderCard(){
+  if(order.length === 0){
+    work.innerHTML = `<div class="card"><div class="mode">Карточки завершены</div><div class="result">${masteredCards.length} / ${current.questions.length}</div><p class="muted">Все вопросы освоены ✅</p><div class="btns"><button class="btn" onclick="startCards()">Повторить заново</button><button class="btn secondary" onclick="showAll()">Все вопросы</button></div></div>`;
+    return;
+  }
+  const q = order[index];
+  const mastered = masteredCards.length;
+  const total = current.questions.length;
+  const pct = Math.round((mastered / total) * 100);
+  work.innerHTML = `<div class="progress-wrap"><div class="progress-row"><span>Освоено ${mastered} / ${total}</span><span>${pct}%</span></div><div class="progress"><div class="bar" style="width:${pct}%"></div></div></div><div class="study-stats"><span>Осталось: ${order.length}</span><span>Карточка ${index + 1} / ${order.length}</span></div><div class="flip" id="flip" onclick="this.classList.toggle('flipped')"><div class="flip-inner"><div class="face"><div class="mode">Вопрос</div><div class="qtext">${escapeHtml(q.q)}</div><p class="muted">Нажми на карточку, чтобы увидеть ответ.</p></div><div class="face back"><div class="mode">Ответ</div><div class="ans">${escapeHtml(q.a)}</div><p class="muted">Выбери: знаешь или повторить позже.</p></div></div></div><div class="card-actions"><button class="btn good" onclick="knowCard(event)">✅ Знаю</button><button class="btn bad" onclick="dontKnowCard(event)">🔁 Не знаю</button><button class="btn secondary" onclick="prevCard(event)">← Назад</button><button class="btn secondary" onclick="nextCard(event)">Дальше →</button></div>`;
+}
+function knowCard(e){
+  e.stopPropagation();
+  const q = order[index];
+  masteredCards.push(q.id);
+  order.splice(index, 1);
+  if(index >= order.length){ index = 0; }
+  renderCard();
+}
+function dontKnowCard(e){
+  e.stopPropagation();
+  const q = order.splice(index, 1)[0];
+  order.push(q);
+  if(index >= order.length){ index = 0; }
+  renderCard();
+}
+function nextCard(e){
+  e.stopPropagation();
+  if(!order.length) return;
+  index = (index + 1) % order.length;
+  renderCard();
+}
+function prevCard(e){
+  e.stopPropagation();
+  if(!order.length) return;
+  index = (index - 1 + order.length) % order.length;
+  renderCard();
+}
 function showAll(){setActiveMode("all");work.innerHTML=`<div class="card"><div class="mode">Все вопросы</div><input class="search" id="search" placeholder="Поиск по вопросам и ответам..." oninput="filterAll()"><div class="list" id="allList"></div></div>`;filterAll();}
 function filterAll(){const term=(document.getElementById("search")?.value||"").toLowerCase().trim();const list=current.questions.filter(q=>(q.q+" "+q.a).toLowerCase().includes(term));document.getElementById("allList").innerHTML=list.map(q=>`<div class="row"><b>${q.id}. ${escapeHtml(q.q)}</b><span class="muted">${escapeHtml(q.a)}</span></div>`).join("")||`<p class="muted">Ничего не найдено.</p>`;}
 renderHome();
