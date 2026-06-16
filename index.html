@@ -160,6 +160,24 @@ html[data-theme="dark"] .study-stats{color:var(--muted)}
   .card-actions{gap:7px;}
   .card-actions .btn{font-size:14px;padding:10px 8px;}
 }
+  /* Дополнительное пространство снизу на телефонах */
+@media (max-width: 768px) {
+    body{
+        padding-bottom: 100px;
+    }
+
+    .page{
+        padding-bottom: 120px;
+    }
+
+    .safe-area{
+        padding-bottom: calc(120px + env(safe-area-inset-bottom));
+    }
+
+    .work{
+        margin-bottom: 80px;
+    }
+}
 
 </style>
 </head>
